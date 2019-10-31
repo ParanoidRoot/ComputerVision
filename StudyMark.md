@@ -5,10 +5,11 @@
 ## 1. Pytorch 的数据集加载与使用方式
 
 0. <font color='red' size=5>Pytorch 中采用的矩阵结构</font>
+    
     1. 对于输入 $x_{train}:~case * features$
     2. 对于输出 $y_{train}:~case*labels$
-    3. 注意图像的输入 $img:~C*H*W$, 代表了 Channel * Height * Width
-
+3. 注意图像的输入 $img:~C*H*W$, 代表了 Channel * Height * Width
+    
 1. 首先要加载原生的数据集
 
     ```python
@@ -68,6 +69,7 @@
 ## 2. Pytorch 的训练过程
 
 1. 第一步获取数据集
+    
     * 在目录 `1. Pytorch 的数据集加载和使用方式` 中已经阐明了
 2. 构建模型
     1. 确定每层网络的结构
@@ -94,13 +96,16 @@
         * 获取损失值: `loss_val = loss.item()`
 
     3. 清空上一次计算的梯度剩余值
-        * `self.optimizer.zero_grad()`
-
+        
+    * `self.optimizer.zero_grad()`
+        
     4. 向前传播, 计算梯度
+        
         * `loss.backward()`
     5. 使用优化器, 更新当前的权重, 向着利用损失函数的方向移动一个 $lr$
-        * `self.optimizer.step()`
-
+        
+    * `self.optimizer.step()`
+        
     6. 综合全部
 
         ```python
@@ -167,5 +172,14 @@
                 )
     ```
 
-    
 
+
+
+
+## 3. CNN & FCN
+
+### (1) CNN
+
+1. 其中的卷积操作是: 覆盖后进行对象元素相乘, 然后相加
+2. 计算公式: $ o = \lfloor i + 2p - k\rfloor/s +1, i = input\_size, p = padding\_size, k = kernel\_size$
+3. 
