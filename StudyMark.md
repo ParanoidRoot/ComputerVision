@@ -5,11 +5,11 @@
 ## 1. Pytorch 的数据集加载与使用方式
 
 0. <font color='red' size=5>Pytorch 中采用的矩阵结构</font>
-    
+   
     1. 对于输入 $x_{train}:~case * features$
     2. 对于输出 $y_{train}:~case*labels$
 3. 注意图像的输入 $img:~C*H*W$, 代表了 Channel * Height * Width
-    
+   
 1. 首先要加载原生的数据集
 
     ```python
@@ -69,7 +69,7 @@
 ## 2. Pytorch 的训练过程
 
 1. 第一步获取数据集
-    
+   
     * 在目录 `1. Pytorch 的数据集加载和使用方式` 中已经阐明了
 2. 构建模型
     1. 确定每层网络的结构
@@ -96,16 +96,16 @@
         * 获取损失值: `loss_val = loss.item()`
 
     3. 清空上一次计算的梯度剩余值
-        
+       
     * `self.optimizer.zero_grad()`
-        
+      
     4. 向前传播, 计算梯度
-        
+       
         * `loss.backward()`
     5. 使用优化器, 更新当前的权重, 向着利用损失函数的方向移动一个 $lr$
-        
+       
     * `self.optimizer.step()`
-        
+      
     6. 综合全部
 
         ```python
@@ -176,10 +176,184 @@
 
 
 
-## 3. CNN & FCN
+## :star: 3. Pytorch 使用的注意点
 
-### (1) CNN
+1. 加载数据的思路
+
+    1. 首先读入一个 dataset, 并完成一些初始化的工作
+    2. 然后构造一个可以迭代的对象
+
+    3. 注意导入的包
+
+        ```python
+        from torch.utils.data import DataLoader
+        import torchvision.transforms as trans
+        import torchvision.datasets as datasets
+        ```
+
+2. 模型的构建以及训练部分
+
+    1. 模型的构建, 推荐使用 `nn.Sequential(..., ..., ...,)`
+
+        ```python
+        self.conv1 = nn.Sequential(
+                    nn.Conv2d(1, 16, 3),  # [bs, 16, 26, 26]
+                    nn.BatchNorm2d(16),  # 防止数值过大
+                    nn.ReLU()  # 激活函数
+                )
+        ```
+
+    2. 模型前向传播, 计算一次
+
+        ```python
+            def evaluate_forward(self, x_inputs, y_target):
+                """前向传播一次, 并且返回一个 loss."""
+                pred = self(x_inputs)
+                loss = self.loss_function(pred, y_target)
+                return pred, loss
+        ```
+
+    3. 训练一个 batch
+
+        ```python
+            def train_one_batch(self, x_train, y_train):
+                """完成一个 batch 的训练."""
+                # 1. 首先前向传播, 计算一次
+                y_pred, loss = self.evaluate_forward(x_train, y_train)
+                # 2. 清空梯度
+                self.optimizer.zero_grad()
+                # 3. 反向传播计算梯度
+                loss.backward()
+                # 4. 优化器选择移动一个梯度的方位
+                self.optimizer.step()
+                # 5. 返回结果
+                return y_pred, loss
+        ```
+
+3. **<font color='red'>pytorch 的模块理解</font>**
+
+    1. 使用了 $nn$ 模块, 那么其中所有包含的网络结构层, 以及损失函数, 都是一个 callable 的对象, 所以在往模型中传入损失函数的时候, 要注意传入一个对象
+
+        ```python
+        # 配置模型
+                model = MNISTCNNModel()
+                # model.to(MNISTConfig.device)
+                loss_function = nn.CrossEntropyLoss()  # 注意这里每个 nn 中的对象, 都是一个 callable 的函数
+                model.set_loss_function(loss_function)
+                optimizer = optim.RMSprop(model.parameters(), lr=MNISTConfig.lr)
+                model.set_optimizer(optimizer)
+        ```
+
+    2. 对于 $loss$ 来说, 是保留了之前的计算图的信息的
+    3. 对于 $optimizer$ 来说, 他保留的则是这个模型的梯度以及权重, 偏置的参数信息
+
+4. **注意模型的训练, 保存; 读取, 评价过程**
+    * 保存其实保存的是权重字典
+    * 读取也是读入权重字典
+    * 注意: 
+        * train: 在训练前加上 `model.train()`
+        * eval: 在测试前加上 `model.eval()`
+
+5. 注意使用 `cuda` 加速, 要对 model 以及输入的张量都 `.to(device)`
+    
+    * **注意: 这个是有返回值的, 需要被赋值!!!**
+
+
+
+
+
+## 4. 深度学习基础模型
+
+### (1) CNN-Net
 
 1. 其中的卷积操作是: 覆盖后进行对象元素相乘, 然后相加
-2. 计算公式: $ o = \lfloor i + 2p - k\rfloor/s +1, i = input\_size, p = padding\_size, k = kernel\_size$
-3. 
+
+2. 计算公式: $ o = (i + 2p - k + 1)/s , i = input\_size, p = padding\_size, k = kernel\_size$
+
+3. 注意: 
+
+    1. 卷积之后的一层可以是池化, 也可以是激活函数
+
+        ```python
+        		self.conv1 = nn.Sequential(
+                    nn.Conv2d(1, 16, 3),  # [bs, 16, 26, 26]
+                    nn.BatchNorm2d(16),  # 防止数值过大
+                    nn.ReLU()  # 激活函数
+                )
+                self.conv2 = nn.Sequential(
+                    nn.Conv2d(16, 32, 3),
+                    nn.BatchNorm2d(32),
+                    nn.ReLU()
+                )
+                self.conv3 = nn.Sequential(
+                    nn.Conv2d(32, 16, 3),
+                    nn.BatchNorm2d(16),
+                    nn.ReLU()
+                )
+                self.conv4 = nn.Sequential(
+                    nn.Conv2d(16, 8, 7),
+                    nn.BatchNorm2d(8),
+                    nn.ReLU()
+                )
+                self.linear1 = nn.Sequential(
+                    nn.Linear(16 * 16 * 8, 8 * 8 * 4),
+                    nn.ReLU()
+                )
+                self.linear2 = nn.Sequential(
+                    nn.Linear(8 * 8 * 4, 4 * 4 * 2),
+                    nn.ReLU()
+                )
+                self.linear3 = nn.Sequential(
+                    nn.Linear(4 * 4 * 2, 10)
+                )
+        ```
+
+    2. 注意线性回归的最后一层, 往往是不加入激活函数的
+
+        ```python
+            def forward(self, inputs):
+                temp = self.conv1(inputs)
+                temp = self.conv2(temp)
+                temp = self.conv3(temp)
+                temp = self.conv4(temp)
+                # flatten
+                temp = temp.view((inputs.shape[0], -1))
+                # 线性回归
+                temp = self.linear1(temp)
+                temp = self.linear2(temp)
+                temp = self.linear3(temp)
+                return temp
+        ```
+
+
+
+
+
+### (2) nn.CrossEntropyLoss()
+
+1. 交叉信息商函数的定义
+
+    *  ![img](F:\Research\ComputerVision\pictures\cross_entropy.png)
+
+    * 假设x是正确的概率分布，而y是我们预测出来的概率分布，这个公式算出来的结果，表示y与正确答案x之间的错误程度（即：y错得有多离谱），结果值越小，表示y越准确，与x越接近。
+
+    * 比如: 
+
+        x的概率分布为：{1/4 ，1/4，1/4，1/4}，现在我们通过机器学习，预测出来二组值：
+
+        y1的概率分布为 {1/4 , 1/2 , 1/8 , 1/8}
+
+        y2的概率分布为 {1/4 , 1/4 , 1/8 , 3/8}
+
+    * 从直觉上看，y2分布中，前2项都100%预测对了，而y1只有第1项100%对，所以y2感觉更准确，看看公式算下来，是不是符合直觉: 
+
+    ![img](F:\Research\ComputerVision\pictures\cross_entropy_1.png)
+
+     
+
+     	![img](F:\Research\ComputerVision\pictures\cross_entropy_2.png)
+
+    * **对比可以发现, 交叉信息熵可以用来较为真实的反映两组预测之间的概率分布偏差程度**
+
+2. **注意, pytorch 中的交叉信息商函数, 输入的形式 $input: [bs, class\_num], target: [bs,]$**
+
