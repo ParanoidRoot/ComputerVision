@@ -129,6 +129,43 @@ class Main(object):
         # 训练结束存储模型
         save_model(model, MNISTConfig.join_path('out', 'mnist/cnn.pkl'))
 
+    @classmethod
+    def load_and_test(cls):
+        """完成对于模型的加载, 并且进行评价预测."""
+        # 读取测试集
+        dataset = MNISTDataLoader.read_in_dataset(MNISTConfig.data_dir, 'test')
+        batch_vec_list = MNISTDataLoader.trans_data_set_2_batch_vector_list(
+            dataset, MNISTConfig.batch_size, False
+        )
+        # 加载模型
+        model = MNISTCNNModel()
+        model = load_model(model, MNISTConfig.join_path('out', 'mnist/cnn.pkl'))
+        loss_function = nn.CrossEntropyLoss()
+        model.set_loss_function(loss_function)
+        model.to(MNISTConfig.device)
+        # 开始测试
+        model.eval()
+        # for batch_idx, (batch_data, batch_label) in enumerate(batch_vec_list):
+        #     x_test = batch_data.to(MNISTConfig.device)
+        #     y_test = batch_label.to(MNISTConfig.device)
+        #     pred, loss = model.evaluate_forward(x_test, y_test)
+        #     print(
+        #         'batch: {0}, eval_loss: {1:.3f}, eval_acc:{2:.3f}'.format(
+        #             batch_idx, loss.item(), calculate_accuracy(
+        #                 mask_by_max_2d, judge_4_one_hot_multi_class_by_equal_2d, y_pred=pred,
+        #                 y_target=dim_1_tensor_2_one_hot(y_test, 10)
+        #             )
+        #         )
+        #     )
+        temp_vec = next(iter(batch_vec_list))
+        x_test = temp_vec[0][0].reshape((1, 1, 28, 28)).to(MNISTConfig.device)
+        picture = x_test[0][0]
+        y_pred = model(x_test)
+        print(y_pred)
+        show_one_2d_image(
+            picture.to(torch.device('cpu')), str(y_pred.argmax().item())
+        )
+
 
 class MNISTDataLoader(object):
     @classmethod
@@ -154,4 +191,5 @@ class MNISTDataLoader(object):
 
 
 if __name__ == '__main__':
-    Main.train_and_save()
+    # Main.train_and_save()
+    Main.load_and_test()
