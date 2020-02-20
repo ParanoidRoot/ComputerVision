@@ -87,7 +87,7 @@ class MNISTCNNModel(nn.Module):
         # 5. 返回结果
         return y_pred, loss
 
-
+    
 class Main(object):
 
     @classmethod
